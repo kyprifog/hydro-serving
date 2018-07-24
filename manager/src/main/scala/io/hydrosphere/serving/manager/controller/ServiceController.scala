@@ -50,23 +50,6 @@ class ServiceController(
     }
   }
 
-  /*@Path("/{serviceId}")
-  @ApiOperation(value = "deleteService", notes = "deleteService", nickname = "deleteService", httpMethod = "DELETE")
-  @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "serviceId", required = true, dataType = "long", paramType = "path", value = "serviceId")
-  ))
-  @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Service Deleted"),
-    new ApiResponse(code = 500, message = "Internal server error")
-  ))
-  def deleteService = delete {
-    path("api" / "v1" / "service" / LongNumber) { serviceId =>
-      onSuccess(serviceManagementService.deleteService(serviceId)) {
-        complete(200, None)
-      }
-    }
-  }*/
-
   @Path("/{serviceId}")
   @ApiOperation(value = "getService", notes = "getService", nickname = "getService", httpMethod = "GET")
   @ApiImplicitParams(Array(
@@ -102,50 +85,6 @@ class ServiceController(
     }
   }
 
-  /*@Path("/")
-  @ApiOperation(value = "Add Service", notes = "Add Service", nickname = "addService", httpMethod = "POST")
-  @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "body", value = "CreateServiceRequest", required = true,
-      dataTypeClass = classOf[CreateServiceRequest], paramType = "body")
-  ))
-  @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Service", response = classOf[Service]),
-    new ApiResponse(code = 500, message = "Internal server error")
-  ))
-  def addService = path("api" / "v1" / "service") {
-    post {
-      entity(as[CreateServiceRequest]) { r =>
-        complete(
-          serviceManagementService.addService(r)
-        )
-      }
-    }
-  }
-
-
-  @Path("/serve/{serviceId}")
-  @ApiOperation(value = "Serve Service by id", notes = "Serve Service by id", nickname = "Serve Service by id", httpMethod = "POST")
-  @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "serviceId", required = true, dataType = "long", paramType = "path", value = "serviceId"),
-    new ApiImplicitParam(name = "body", value = "Any", dataTypeClass = classOf[List[_]], required = true, paramType = "body")
-  ))
-  @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "Any", response = classOf[Seq[Any]]),
-    new ApiResponse(code = 500, message = "Internal server error")
-  ))
-  def serveByServiceId = path("api" / "v1" / "service" / "serve" / LongNumber) { (serviceId) =>
-    post {
-      extractRawData { bytes =>
-        completeExecutionResult(serviceManagementService.serveService(serviceId, bytes))
-      }
-    }
-  }
-
-
-
-  */
-
   val routes: Route =
-    listAll ~ /*addService ~ deleteService ~*/ getService ~
-      fetchByModelId ~  fetchByIds
+    listAll ~  getService ~ fetchByModelId ~  fetchByIds
 }

@@ -1,7 +1,23 @@
-package io.hydrosphere.serving.manager.controller.application
+package io.hydrosphere.serving.manager.service.application
+
+import java.util.UUID
 
 import io.hydrosphere.serving.manager.model.db.ServiceKeyDescription
-import io.hydrosphere.serving.manager.model.protocol.CompleteJsonProtocol._
+
+case class ExecutionGraphRequest(
+  stages: Seq[ExecutionStageRequest],
+  links: Seq[ExecutionLinkRequest]
+)
+
+case class ExecutionStageRequest(
+  key: Option[UUID],
+  services: List[ServiceCreationDescription]
+)
+
+case class ExecutionLinkRequest(
+  from: UUID,
+  to: UUID
+)
 
 case class ServiceCreationDescription(
   runtimeId: Long,
@@ -17,8 +33,4 @@ case class ServiceCreationDescription(
       environmentId
     )
   }
-}
-
-object ServiceCreationDescription {
-  implicit val format = jsonFormat5(ServiceCreationDescription.apply)
 }

@@ -1,10 +1,12 @@
 package io.hydrosphere.serving.manager.model.protocol
 
+import io.hydrosphere.serving.manager.controller.application._
 import io.hydrosphere.serving.manager.controller.environment.CreateEnvironmentRequest
 import io.hydrosphere.serving.manager.model.Result.{ClientError, ErrorCollection, HError, InternalError}
 import io.hydrosphere.serving.manager.model.db.{CreateRuntimeRequest, PullRuntime}
 import io.hydrosphere.serving.manager.service._
 import io.hydrosphere.serving.manager.service.aggregated_info.{AggregatedModelBuild, AggregatedModelInfo, AggregatedModelVersion}
+import io.hydrosphere.serving.manager.service.application._
 import io.hydrosphere.serving.manager.service.clouddriver.{MetricServiceTargetLabels, MetricServiceTargets}
 import io.hydrosphere.serving.manager.service.model._
 import io.hydrosphere.serving.manager.service.model_version.CreateModelVersionRequest
@@ -80,6 +82,12 @@ trait CompleteJsonProtocol extends CommonJsonProtocol with ContractJsonProtocol 
 
     override def read(json: JsValue): HError = ???
   }
+
+  implicit val executionStageRequest = jsonFormat1(ExecutionStageRequest.apply)
+  implicit val executionGraphRequest = jsonFormat2(ExecutionGraphRequest.apply)
+  implicit val createApplicationRequest = jsonFormat4(CreateApplicationRequest.apply)
+  implicit val serviceCreationDescription = jsonFormat5(ServiceCreationDescription.apply)
+  implicit val updateApplicationRequest = jsonFormat5(UpdateApplicationRequest.apply)
 }
 
 object CompleteJsonProtocol extends CompleteJsonProtocol

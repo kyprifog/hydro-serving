@@ -6,6 +6,7 @@ import io.hydrosphere.serving.manager.controller.application._
 import io.hydrosphere.serving.manager.controller.model.ModelUpload
 import io.hydrosphere.serving.manager.it.FullIntegrationSpec
 import io.hydrosphere.serving.manager.model.db._
+import io.hydrosphere.serving.manager.service.application.{CreateApplicationRequest, ServiceCreationDescription}
 import io.hydrosphere.serving.manager.service.environment.AnyEnvironment
 import io.hydrosphere.serving.manager.service.model_build.BuildModelRequest
 import org.scalatest.BeforeAndAfterAll
@@ -36,7 +37,7 @@ class ApplicationServiceITSpec extends FullIntegrationSpec with BeforeAndAfterAl
             namespace = None,
             executionGraph = ExecutionGraphRequest(
               stages = List(
-                ExecutionStepRequest(
+                ExecutionStageRequest(
                   services = List(
                     ServiceCreationDescription(
                       runtimeId = runtime.id, // dummy runtime id
@@ -94,7 +95,7 @@ class ApplicationServiceITSpec extends FullIntegrationSpec with BeforeAndAfterAl
             namespace = None,
             executionGraph = ExecutionGraphRequest(
               stages = List(
-                ExecutionStepRequest(
+                ExecutionStageRequest(
                   services = List(
                     ServiceCreationDescription(
                       runtimeId = runtime.id,
@@ -164,7 +165,7 @@ class ApplicationServiceITSpec extends FullIntegrationSpec with BeforeAndAfterAl
             namespace = None,
             executionGraph = ExecutionGraphRequest(
               stages = List(
-                ExecutionStepRequest(
+                ExecutionStageRequest(
                   services = List(
                     ServiceCreationDescription(
                       runtimeId = 1, // dummy runtime id

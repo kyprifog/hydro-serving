@@ -4,9 +4,6 @@ import io.hydrosphere.serving.manager.model.db.{Service, ServiceKeyDescription}
 
 import scala.concurrent.Future
 
-/**
-  *
-  */
 trait ServiceRepository extends BaseRepository[Service, Long] {
   def fetchServices(services: Set[ServiceKeyDescription]): Future[Seq[Service]]
 

@@ -1,9 +1,12 @@
 package io.hydrosphere.serving.manager.model.db
 
+import java.util.UUID
+
 import io.hydrosphere.serving.contract.model_signature.ModelSignature
 import io.hydrosphere.serving.manager.model.DataProfileFields
 
 case class ApplicationStage(
+  key: UUID,
   services: List[DetailedServiceDescription],
   signature: Option[ModelSignature],
   dataProfileFields: DataProfileFields
@@ -21,9 +24,4 @@ case class DetailedServiceDescription(
     modelVersionId = Some(modelVersion.id),
     environmentId = Some(environment.id)
   )
-}
-
-object ApplicationStage {
-  def stageId(applicationId: Long, stageIndex: Int): String =
-    s"app${applicationId}stage$stageIndex"
 }

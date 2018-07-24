@@ -1,4 +1,4 @@
-package io.hydrosphere.serving.manager.controller.application
+package io.hydrosphere.serving.manager.service.application
 
 import io.hydrosphere.serving.manager.model.db.ApplicationKafkaStream
 
@@ -8,8 +8,3 @@ case class CreateApplicationRequest(
   executionGraph: ExecutionGraphRequest,
   kafkaStreaming: List[ApplicationKafkaStream]
 )
-
-object CreateApplicationRequest {
-  import io.hydrosphere.serving.manager.model.protocol.CompleteJsonProtocol._
-  implicit val format = jsonFormat4(CreateApplicationRequest.apply)
-}

@@ -19,9 +19,9 @@ object Application {
       name = app.name,
       contract = Option(app.contract),
       executionGraph = Option(ExecutionGraph(
-        app.executionGraph.stages.zipWithIndex.map {
-          case (stage, idx) => ExecutionStage(
-            stageId = ApplicationStage.stageId(app.id, idx),
+        app.executionGraph.stages.map { stage =>
+          ExecutionStage(
+            stageId = stage.key,
             signature = stage.signature
           )
         }

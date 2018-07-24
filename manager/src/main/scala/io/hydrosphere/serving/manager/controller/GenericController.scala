@@ -13,7 +13,6 @@ import spray.json._
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-
 trait GenericController extends CompleteJsonProtocol with Logging {
   final def withF[T: ToResponseMarshaller](res: Future[T])(f: T => Route): Route = {
     onComplete(res){

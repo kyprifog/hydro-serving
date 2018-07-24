@@ -7,7 +7,7 @@ import io.hydrosphere.serving.manager.controller.{GenericController, ServingData
 import io.hydrosphere.serving.manager.model.protocol.CompleteJsonProtocol._
 import io.hydrosphere.serving.manager.model.db.Application
 import io.hydrosphere.serving.manager.service._
-import io.hydrosphere.serving.manager.service.application.{ApplicationManagementService, JsonServeRequest, RequestTracingInfo}
+import io.hydrosphere.serving.manager.service.application._
 import io.swagger.annotations._
 import spray.json.JsObject
 
@@ -38,7 +38,7 @@ class ApplicationController(
   @ApiOperation(value = "Add Application", notes = "Add Application", nickname = "addApplication", httpMethod = "POST")
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "body", value = "Application", required = true,
-                         dataTypeClass = classOf[CreateApplicationRequest], paramType = "body")
+      dataTypeClass = classOf[CreateApplicationRequest], paramType = "body")
   ))
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Application", response = classOf[Application]),
@@ -58,7 +58,7 @@ class ApplicationController(
   @ApiOperation(value = "Update Application", notes = "Update Application", nickname = "updateApplication", httpMethod = "PUT")
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "body", value = "ApplicationCreateOrUpdateRequest", required = true,
-                         dataTypeClass = classOf[UpdateApplicationRequest], paramType = "body")
+      dataTypeClass = classOf[UpdateApplicationRequest], paramType = "body")
   ))
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "Application", response = classOf[Application]),
@@ -136,11 +136,11 @@ class ApplicationController(
                           inputs = bytes
                         ),
                         reqId.map(xRequestId =>
-                                    RequestTracingInfo(
-                                      xRequestId = xRequestId,
-                                      xB3requestId = reqB3Id,
-                                      xB3SpanId = reqB3SpanId
-                                    )
+                          RequestTracingInfo(
+                            xRequestId = xRequestId,
+                            xB3requestId = reqB3Id,
+                            xB3SpanId = reqB3SpanId
+                          )
                         )
                       )
                     }
