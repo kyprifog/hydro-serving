@@ -16,6 +16,8 @@ trait ApplicationManagementService {
 
   def getApplication(id: Long): HFResult[Application]
 
+  def getApplication(name: String): HFResult[Application]
+
   def generateInputsForApplication(appId: Long, signatureName: String): HFResult[JsObject]
 
   def findVersionUsage(versionId: Long): Future[Seq[Application]]

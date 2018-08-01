@@ -9,7 +9,7 @@ case class Application(
   namespace: Option[String],
   contract: ModelContract,
   executionGraph: ApplicationExecutionGraph,
-  kafkaStreaming: List[ApplicationKafkaStream]
+  kafkaStreaming: Seq[ApplicationKafkaStream]
 )
 
 object Application {

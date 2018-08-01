@@ -4,10 +4,12 @@ import io.hydrosphere.serving.manager.model.{HFResult, Result}
 import io.hydrosphere.serving.manager.service.application.RequestTracingInfo
 import io.hydrosphere.serving.tensorflow.api.predict.{PredictRequest, PredictResponse}
 
+import scala.concurrent.ExecutionContext
+
 class StandaloneExecutor(
   val executable: Executable[SimplePlan],
   val executorParams: ExecutorParams
-) extends ApplicationExecutor {
+)(implicit val executionContext: ExecutionContext) extends ApplicationExecutor {
 
   override def execute(request: PredictRequest, tracingInfo: Option[RequestTracingInfo]): HFResult[PredictResponse] = {
     request.modelSpec match {
@@ -29,7 +31,7 @@ class StandaloneExecutor(
           servicePath = servicePath.signatureName,
           stageInfo = stageInfo
         )
-        serve(unit, request, tracingInfo)
+        CommonExecution.serve(unit, request, executorParams, tracingInfo)
 
       case None => Result.clientErrorF("ModelSpec in request is not specified")
     }

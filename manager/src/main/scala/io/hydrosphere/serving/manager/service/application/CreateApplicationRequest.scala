@@ -6,5 +6,5 @@ case class CreateApplicationRequest(
   name: String,
   namespace: Option[String],
   executionGraph: ExecutionGraphRequest,
-  kafkaStreaming: List[ApplicationKafkaStream]
+  kafkaStreaming: Seq[ApplicationKafkaStream]
 )

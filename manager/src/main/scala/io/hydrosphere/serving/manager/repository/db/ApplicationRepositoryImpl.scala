@@ -20,7 +20,7 @@ class ApplicationRepositoryImpl(
   import databaseService.driver.api._
   import ApplicationRepositoryImpl.mapFromDb
 
-  private def getServices(l: ApplicationExecutionGraph): List[String] =
+  private def getServices(l: ApplicationExecutionGraph): Seq[String] =
     l.stages.flatMap(s => s.services.map(c => c.serviceDescription.toServiceName()))
 
   override def create(entity: Application): Future[Application] =
@@ -31,8 +31,8 @@ class ApplicationRepositoryImpl(
         namespace = entity.namespace,
         applicationContract = entity.contract.toProtoString,
         executionGraph = entity.executionGraph.toJson.toString(),
-        servicesInStage = getServices(entity.executionGraph).map(v => v.toString),
-        kafkaStreams = entity.kafkaStreaming.map(p => p.toJson.toString())
+        servicesInStage = getServices(entity.executionGraph).map(v => v.toString).toList,
+        kafkaStreams = entity.kafkaStreaming.map(p => p.toJson.toString()).toList
       )
     ).map(s => mapFromDb(s))
 
@@ -70,8 +70,8 @@ class ApplicationRepositoryImpl(
     db.run(query.update(
       value.name,
       value.executionGraph.toJson.toString(),
-      getServices(value.executionGraph),
-      value.kafkaStreaming.map(_.toJson.toString),
+      getServices(value.executionGraph).toList,
+      value.kafkaStreaming.map(_.toJson.toString).toList,
       value.namespace
     ))
   }

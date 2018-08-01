@@ -3,18 +3,19 @@ package io.hydrosphere.serving.manager.service.application.factory
 import java.util.UUID
 
 import cats.data.EitherT
+import cats.implicits._
 import io.hydrosphere.serving.contract.model_contract.ModelContract
 import io.hydrosphere.serving.contract.model_signature.ModelSignature
 import io.hydrosphere.serving.manager.model.db.{Application, ApplicationExecutionGraph, ApplicationStage, DetailedServiceDescription, Environment, ModelVersion, Runtime}
 import io.hydrosphere.serving.manager.model.{HFResult, Result}
 import io.hydrosphere.serving.manager.service.application.{CreateApplicationRequest, ServiceCreationDescription}
-import io.hydrosphere.serving.manager.service.environment.{AnyEnvironment, EnvironmentManagementService}
-import io.hydrosphere.serving.manager.service.model_version.ModelVersionManagementService
-import io.hydrosphere.serving.manager.service.runtime.RuntimeManagementService
+import io.hydrosphere.serving.manager.service.environment.AnyEnvironment
+
+import scala.concurrent.ExecutionContext
 
 class StandaloneApplicationFactory(
   val factoryParams: FactoryParams
-) extends ApplicationFactory {
+)(implicit executionContext: ExecutionContext) extends ApplicationFactory {
 
   def inferContract(stage: Seq[ApplicationStage]): ModelContract = {
     stage.head.services.head.modelVersion.modelContract
@@ -51,7 +52,7 @@ class StandaloneApplicationFactory(
           signed <- EitherT(createDetailedServiceDesc(service, version, runtime, environment, None))
         } yield Seq(
           ApplicationStage(
-            key = stageId,
+            key = stageId.toString,
             services = List(signed.copy(weight = 100)), // 100 since this is the only service in the app
             signature = None,
             dataProfileFields = signed.modelVersion.dataProfileTypes.getOrElse(Map.empty)

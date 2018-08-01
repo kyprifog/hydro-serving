@@ -44,7 +44,7 @@ class DagExecutorActor(val application: Application, val incomingRequest: Predic
 
   import DagExecutorActor._
 
-  val queues = Map[ApplicationStage, mutable.Queue[PredictResponse]]
+  val queues = Map.empty[ApplicationStage, mutable.Queue[PredictResponse]]
 
   def waiting: Receive = {
     case Start =>

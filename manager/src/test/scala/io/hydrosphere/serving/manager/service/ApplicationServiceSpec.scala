@@ -38,35 +38,40 @@ class ApplicationServiceSpec extends GenericUnitTest {
       val mBuild2 = ModelBuild(2, builtModel2, 1, createdTime, Some(LocalDateTime.now()), ServiceTaskStatus.Finished, None, None, Some(mVersion2), "")
 
       val graph1 = ApplicationExecutionGraph(
-        List(
+        links = ???,
+        stages = List(
           ApplicationStage(
-            List(DetailedServiceDescription(
+            key = ???,
+            services = List(DetailedServiceDescription(
               weight = 100,
               signature = None,
               runtime = runtime,
               modelVersion = mVersion1,
               environment = AnyEnvironment
             )),
-            None,
-            Map.empty
+            signature = None,
+            dataProfileFields = Map.empty
           ),
           ApplicationStage(
-            List(DetailedServiceDescription(
+            key = ???,
+            services = List(DetailedServiceDescription(
               weight = 100,
               signature = None,
               runtime = runtime,
               modelVersion = mVersion2,
               environment = AnyEnvironment
             )),
-            None,
-            Map.empty
+            signature = None,
+            dataProfileFields = Map.empty
           )
         )
       )
       val app1 = Application(1, "testapp1", None, ModelContract.defaultInstance, graph1, List.empty)
       val graph2 = ApplicationExecutionGraph(
-        List(ApplicationStage(
-          List(
+        links = ???,
+        stages = List(ApplicationStage(
+          key = ???,
+          services = List(
             DetailedServiceDescription(
               weight = 100,
               signature = None,
@@ -81,13 +86,16 @@ class ApplicationServiceSpec extends GenericUnitTest {
               modelVersion = mVersion2,
               environment = AnyEnvironment
             )
-          ), None, Map.empty
+          ),
+          signature = None,
+          dataProfileFields = Map.empty
         ))
       )
       val app2 = Application(2, "testapp2", None, ModelContract.defaultInstance, graph2, List.empty)
       val graph3 = ApplicationExecutionGraph(
-        List(ApplicationStage(
-          List.empty, None, Map.empty
+        links = ???,
+        stages = List(ApplicationStage(
+          "very-long-id", List.empty, None, Map.empty
         ))
       )
       val app3 = Application(3, "testapp3", None, ModelContract.defaultInstance, graph3, List.empty)

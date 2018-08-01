@@ -5,6 +5,8 @@ import io.hydrosphere.serving.manager.model.db.Application
 import io.hydrosphere.serving.manager.service.application.CreateApplicationRequest
 import org.apache.logging.log4j.scala.Logging
 
+import scala.concurrent.ExecutionContext
+
 trait ApplicationFactory {
   def factoryParams: FactoryParams
 
@@ -12,7 +14,10 @@ trait ApplicationFactory {
 }
 
 object ApplicationFactory extends Logging {
-  def forRequest(req: CreateApplicationRequest, factoryParams: FactoryParams): HResult[ApplicationFactory] = {
+  def forRequest(
+    req: CreateApplicationRequest,
+    factoryParams: FactoryParams
+  )(implicit executionContext: ExecutionContext): HResult[ApplicationFactory] = {
     req.executionGraph.stages match {
       case singleStage :: Nil if singleStage.services.lengthCompare(1) == 0 =>
         Result.ok(new StandaloneApplicationFactory(factoryParams))

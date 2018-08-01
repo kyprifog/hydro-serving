@@ -2,7 +2,7 @@ package io.hydrosphere.serving.manager.service.application
 
 import cats.data.EitherT
 import cats.implicits._
-import io.hydrosphere.serving.contract.model_contract.ModelContract
+import io.hydrosphere.serving.contract.model_signature.ModelSignature
 import io.hydrosphere.serving.manager.ApplicationConfig
 import io.hydrosphere.serving.manager.model.Result.ClientError
 import io.hydrosphere.serving.manager.model.Result.Implicits._
@@ -13,7 +13,8 @@ import io.hydrosphere.serving.manager.model.api.tensor_builder.SignatureBuilder
 import io.hydrosphere.serving.manager.model.db._
 import io.hydrosphere.serving.manager.repository.ApplicationRepository
 import io.hydrosphere.serving.manager.service.application.executor.{ApplicationExecutor, ExecutorParams}
-import io.hydrosphere.serving.manager.service.environment.{AnyEnvironment, EnvironmentManagementService}
+import io.hydrosphere.serving.manager.service.application.factory.{ApplicationFactory, FactoryParams}
+import io.hydrosphere.serving.manager.service.environment.EnvironmentManagementService
 import io.hydrosphere.serving.manager.service.internal_events.InternalManagerEventsPublisher
 import io.hydrosphere.serving.manager.service.model_version.ModelVersionManagementService
 import io.hydrosphere.serving.manager.service.runtime.RuntimeManagementService
@@ -43,81 +44,50 @@ class ApplicationManagementServiceImpl(
   runtimeService: RuntimeManagementService
 )(implicit val ex: ExecutionContext) extends ApplicationManagementService with Logging {
 
-  def serveApplication(application: Application, request: PredictRequest, tracingInfo: Option[RequestTracingInfo]): HFResult[PredictResponse] = {
-    val executorParams = ExecutorParams(
-      grpcClient = grpcClient,
-      grpcClientForMonitoring = grpcClientForMonitoring,
-      grpcClientForProfiler = grpcClientForProfiler,
-      isShadowed = applicationConfig.shadowingOn
-    )
+  private val factoryParams = FactoryParams(
+    modelVersionManagementService,
+    runtimeService,
+    environmentManagementService
+  )
+
+  override def serveGrpcApplication(data: PredictRequest, tracingInfo: Option[RequestTracingInfo]): HFResult[PredictResponse] = {
     val f = for {
-      executor <- EitherT.fromEither(ApplicationExecutor.forApplication(application, executorParams))
-      result <- EitherT(executor.execute(request, tracingInfo))
-    } yield result
+      spec <- EitherT(Future.successful(data.modelSpec.toHResult(ClientError("ModelSpec is not defined"))))
+      application <- EitherT(getApplication(spec.name))
+      response <- EitherT(serveApplication(application, data, tracingInfo))
+    } yield response
     f.value
   }
 
-  def serveGrpcApplication(data: PredictRequest, tracingInfo: Option[RequestTracingInfo]): HFResult[PredictResponse] = {
-    data.modelSpec match {
-      case Some(modelSpec) =>
-        applicationRepository.getByName(modelSpec.name).flatMap {
-          case Some(app) =>
-            serveApplication(app, data, tracingInfo)
-          case None => Future.failed(new IllegalArgumentException(s"Application '${modelSpec.name}' is not found"))
-        }
-      case None => Future.failed(new IllegalArgumentException("ModelSpec is not defined"))
-    }
-  }
-
-  def serveJsonApplication(jsonServeRequest: JsonServeRequest, tracingInfo: Option[RequestTracingInfo]): HFResult[JsObject] = {
-    getApplication(jsonServeRequest.targetId).flatMap {
-      case Right(application) =>
-        val signature = application.contract.signatures
-          .find(_.signatureName == jsonServeRequest.signatureName)
-          .toHResult(
-            ClientError(s"Application ${jsonServeRequest.targetId} doesn't have a ${jsonServeRequest.signatureName} signature")
-          )
-
-        val ds = signature.right.map { sig =>
-          new SignatureBuilder(sig).convert(jsonServeRequest.inputs).right.map { tensors =>
-            PredictRequest(
-              modelSpec = Some(
-                ModelSpec(
-                  name = application.name,
-                  signatureName = jsonServeRequest.signatureName,
-                  version = None
-                )
-              ),
-              inputs = tensors.mapValues(_.toProto)
-            )
-          }
-        }
-
-        ds match {
-          case Left(err) => Result.errorF(err)
-          case Right(Left(tensorError)) => Result.clientErrorF(s"Tensor validation error: $tensorError")
-          case Right(Right(request)) =>
-            serveApplication(application, request, tracingInfo).map { result =>
-              result.right.map(responseToJsObject)
-            }
-        }
-      case Left(error) =>
-        Result.errorF(error)
-    }
+  override def serveJsonApplication(jsonServeRequest: JsonServeRequest, tracingInfo: Option[RequestTracingInfo]): HFResult[JsObject] = {
+    val f = for {
+      application <- EitherT(getApplication(jsonServeRequest.targetId))
+      signature <- EitherT(Future.successful(findSignature(application, jsonServeRequest.signatureName)))
+      request <- requestToProto(application.name, signature, jsonServeRequest)
+      response <- EitherT(serveApplication(application, request, tracingInfo))
+    } yield responseToJsObject(response)
+    f.value
   }
 
   override def getApplication(appId: Long): HFResult[Application] = {
     applicationRepository.get(appId).map {
       case Some(app) => Result.ok(app)
-      case None => Result.clientError(s"Can't find application with ID $appId")
+      case None => Result.clientError(s"Can't find application with id=$appId")
     }
   }
 
-  def allApplications(): Future[Seq[Application]] = {
+  override def getApplication(appName: String): HFResult[Application] = {
+    applicationRepository.getByName(appName).map {
+      case Some(app) => Result.ok(app)
+      case None => Result.clientError(s"Can't find application with name=$appName")
+    }
+  }
+
+  override def allApplications(): Future[Seq[Application]] = {
     applicationRepository.all()
   }
 
-  def findVersionUsage(versionId: Long): Future[Seq[Application]] = {
+  override def findVersionUsage(versionId: Long): Future[Seq[Application]] = {
     allApplications().map { apps =>
       apps.filter { app =>
         app.executionGraph.stages.exists { stage =>
@@ -129,7 +99,7 @@ class ApplicationManagementServiceImpl(
     }
   }
 
-  def generateInputsForApplication(appId: Long, signatureName: String): HFResult[JsObject] = {
+  override def generateInputsForApplication(appId: Long, signatureName: String): HFResult[JsObject] = {
     getApplication(appId).map { result =>
       result.right.flatMap { app =>
         app.contract.signatures.find(_.signatureName == signatureName) match {
@@ -142,7 +112,7 @@ class ApplicationManagementServiceImpl(
     }
   }
 
-  def createApplication(req: CreateApplicationRequest): HFResult[Application] = executeWithSync {
+  override def createApplication(req: CreateApplicationRequest): HFResult[Application] = executeWithSync {
     val keys = for {
       stage <- req.executionGraph.stages
       service <- stage.services
@@ -152,9 +122,8 @@ class ApplicationManagementServiceImpl(
     val keySet = keys.toSet
 
     val f = for {
-      graph <- EitherT(inferGraph(req.executionGraph))
-      contract <- EitherT(inferAppContract(req.name, graph))
-      app <- EitherT(composeAppF(req.name, req.namespace, graph, contract, req.kafkaStreaming))
+      factory <- EitherT(Future.successful(ApplicationFactory.forRequest(req, factoryParams)))
+      app <- EitherT(factory.create(req))
 
       services <- EitherT.liftF(serviceManagementService.fetchServicesUnsync(keySet))
       existedServices = services.map(_.toServiceKeyDescription)
@@ -168,11 +137,35 @@ class ApplicationManagementServiceImpl(
     f.value
   }
 
-  def deleteApplication(id: Long): HFResult[Application] =
+  override def updateApplication(req: UpdateApplicationRequest): HFResult[Application] = {
+    executeWithSync {
+      val createReq = req.toCreate
+      val res = for {
+        oldApplication <- EitherT(getApplication(req.id))
+
+        factory <- EitherT(Future.successful(ApplicationFactory.forRequest(createReq, factoryParams)))
+        newApplication <- EitherT(factory.create(createReq))
+
+        keysSetOld = oldApplication.executionGraph.stages.flatMap(_.services.map(_.serviceDescription)).toSet
+        keysSetNew = req.executionGraph.stages.flatMap(_.services.map(_.toDescription)).toSet
+
+        _ <- EitherT(removeServiceIfNeeded(keysSetOld -- keysSetNew, req.id))
+        _ <- EitherT(startServices(keysSetNew -- keysSetOld))
+
+        _ <- EitherT(applicationRepository.update(newApplication).map(Result.ok))
+      } yield {
+        internalManagerEventsPublisher.applicationChanged(newApplication)
+        newApplication
+      }
+      res.value
+    }
+  }
+
+  override def deleteApplication(id: Long): HFResult[Application] =
     executeWithSync {
       getApplication(id).flatMap {
         case Right(application) =>
-          val keysSet = application.executionGraph.stages.flatMap(_.services).toSet
+          val keysSet = application.executionGraph.stages.flatMap(_.services.map(_.serviceDescription)).toSet
           applicationRepository.delete(id)
             .flatMap { _ =>
               removeServiceIfNeeded(keysSet, id)
@@ -186,28 +179,18 @@ class ApplicationManagementServiceImpl(
       }
     }
 
-  def updateApplication(req: UpdateApplicationRequest): HFResult[Application] = {
-    executeWithSync {
-      val res = for {
-        oldApplication <- EitherT(getApplication(req.id))
-
-        graph <- EitherT(inferGraph(req.executionGraph))
-        contract <- EitherT(inferAppContract(req.name, graph))
-        newApplication <- EitherT(composeAppF(req.name, req.namespace, graph, contract, req.kafkaStreaming.getOrElse(List.empty), req.id))
-
-        keysSetOld = oldApplication.executionGraph.stages.flatMap(_.services).toSet
-        keysSetNew = req.executionGraph.stages.flatMap(_.services.map(_.toDescription)).toSet
-
-        _ <- EitherT(removeServiceIfNeeded(keysSetOld -- keysSetNew, req.id))
-        _ <- EitherT(startServices(keysSetNew -- keysSetOld))
-
-        _ <- EitherT(applicationRepository.update(newApplication).map(Result.ok))
-      } yield {
-        internalManagerEventsPublisher.applicationChanged(newApplication)
-        newApplication
-      }
-      res.value
-    }
+  private def serveApplication(application: Application, request: PredictRequest, tracingInfo: Option[RequestTracingInfo]): HFResult[PredictResponse] = {
+    val executorParams = ExecutorParams(
+      grpcClient = grpcClient,
+      grpcClientForMonitoring = grpcClientForMonitoring,
+      grpcClientForProfiler = grpcClientForProfiler,
+      isShadowed = applicationConfig.shadowingOn
+    )
+    val f = for {
+      executor <- EitherT(Future.successful(ApplicationExecutor.forApplication(application, executorParams)))
+      result <- EitherT(executor.execute(request, tracingInfo))
+    } yield result
+    f.value
   }
 
   private def executeWithSync[A](func: => HFResult[A]): HFResult[A] = {
@@ -255,51 +238,29 @@ class ApplicationManagementServiceImpl(
     }
   }
 
-  private def composeAppF(name: String, namespace: Option[String], graph: ApplicationExecutionGraph, contract: ModelContract, kafkaStreaming: Seq[ApplicationKafkaStream], id: Long = 0) = {
-    Result.okF(
-      Application(
-        id = id,
-        name = name,
-        namespace = namespace,
-        contract = contract,
-        executionGraph = graph,
-        kafkaStreaming = kafkaStreaming.toList
+  private def requestToProto(appName: String, signature: ModelSignature, jsonServeRequest: JsonServeRequest) = {
+    for {
+      inputs <- EitherT(Future.successful(new SignatureBuilder(signature).convert(jsonServeRequest.inputs)))
+    } yield {
+      PredictRequest(
+        modelSpec = Some(
+          ModelSpec(
+            name = appName,
+            signatureName = jsonServeRequest.signatureName,
+            version = None
+          )
+        ),
+        inputs = inputs.mapValues(_.toProto)
       )
-    )
-  }
-
-  private def mergeServiceDataProfilingTypes(services: Seq[DetailedServiceDescription]): DataProfileFields = {
-    val maps = services.map { s =>
-      s.modelVersion.dataProfileTypes.getOrElse(Map.empty)
-    }
-    maps.reduce((a, b) => a ++ b)
-  }
-
-  def inferServices(services: List[ServiceCreationDescription]): HFResult[Seq[DetailedServiceDescription]] = {
-    Result.sequenceF {
-      services.map { service =>
-        service.modelVersionId match {
-          case Some(vId) =>
-            val f = for {
-              version <- EitherT(modelVersionManagementService.get(vId))
-              runtime <- EitherT(runtimeService.get(service.runtimeId))
-              signature <- EitherT(findSignature(version, service.signatureName))
-              environment <- EitherT(environmentManagementService.get(service.environmentId.getOrElse(AnyEnvironment.id)))
-              signed <- EitherT(createDetailedServiceDesc(service, version, runtime, environment, Some(signature)))
-            } yield signed
-            f.value
-          case None => Result.clientErrorF(s"$service doesn't have a modelversion")
-        }
-      }
     }
   }
 
-  private def findSignature(version: ModelVersion, signature: String) = {
-    Future.successful {
-      version.modelContract.signatures
-        .find(_.signatureName == signature)
-        .toHResult(Result.ClientError(s"Can't find signature $signature in $version"))
-    }
+  private def findSignature(application: Application, signatureName: String) = {
+    application.contract.signatures
+      .find(_.signatureName == signatureName)
+      .toHResult(
+        ClientError(s"Application ${application.id} doesn't have a $signatureName signature")
+      )
   }
 
   private def responseToJsObject(rr: PredictResponse): JsObject = {

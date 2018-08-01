@@ -74,7 +74,7 @@ trait CompleteJsonProtocol extends CommonJsonProtocol with ContractJsonProtocol 
           "information" -> x.toJson
         ))
         case ErrorCollection(errors) => JsObject(Map(
-          "error" -> JsString("Multiple"),
+          "error" -> JsString("MultipleErrors"),
           "information" -> JsArray(errors.map(write).toVector)
         ))
       }
@@ -83,10 +83,11 @@ trait CompleteJsonProtocol extends CommonJsonProtocol with ContractJsonProtocol 
     override def read(json: JsValue): HError = ???
   }
 
-  implicit val executionStageRequest = jsonFormat1(ExecutionStageRequest.apply)
+  implicit val serviceCreationDescription = jsonFormat5(ServiceCreationDescription.apply)
+  implicit val executionStageRequest = jsonFormat2(ExecutionStageRequest.apply)
+  implicit val executionLinkRequest = jsonFormat2(ExecutionLinkRequest.apply)
   implicit val executionGraphRequest = jsonFormat2(ExecutionGraphRequest.apply)
   implicit val createApplicationRequest = jsonFormat4(CreateApplicationRequest.apply)
-  implicit val serviceCreationDescription = jsonFormat5(ServiceCreationDescription.apply)
   implicit val updateApplicationRequest = jsonFormat5(UpdateApplicationRequest.apply)
 }
 

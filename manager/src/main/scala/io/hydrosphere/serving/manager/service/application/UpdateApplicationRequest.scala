@@ -8,4 +8,13 @@ case class UpdateApplicationRequest(
   namespace: Option[String],
   executionGraph: ExecutionGraphRequest,
   kafkaStreaming: Option[Seq[ApplicationKafkaStream]]
-)
+) {
+  def toCreate: CreateApplicationRequest = {
+    CreateApplicationRequest(
+      name = name,
+      namespace = namespace,
+      executionGraph = executionGraph,
+      kafkaStreaming = kafkaStreaming.getOrElse(Seq.empty)
+    )
+  }
+}

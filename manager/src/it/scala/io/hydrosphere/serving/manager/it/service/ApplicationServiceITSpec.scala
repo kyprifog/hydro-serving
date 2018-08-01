@@ -6,7 +6,7 @@ import io.hydrosphere.serving.manager.controller.application._
 import io.hydrosphere.serving.manager.controller.model.ModelUpload
 import io.hydrosphere.serving.manager.it.FullIntegrationSpec
 import io.hydrosphere.serving.manager.model.db._
-import io.hydrosphere.serving.manager.service.application.{CreateApplicationRequest, ServiceCreationDescription}
+import io.hydrosphere.serving.manager.service.application._
 import io.hydrosphere.serving.manager.service.environment.AnyEnvironment
 import io.hydrosphere.serving.manager.service.model_build.BuildModelRequest
 import org.scalatest.BeforeAndAfterAll
@@ -36,8 +36,10 @@ class ApplicationServiceITSpec extends FullIntegrationSpec with BeforeAndAfterAl
             name = "testapp",
             namespace = None,
             executionGraph = ExecutionGraphRequest(
+              links = Seq.empty,
               stages = List(
                 ExecutionStageRequest(
+                  key = None,
                   services = List(
                     ServiceCreationDescription(
                       runtimeId = runtime.id, // dummy runtime id
@@ -52,17 +54,14 @@ class ApplicationServiceITSpec extends FullIntegrationSpec with BeforeAndAfterAl
             ),
             kafkaStreaming = List.empty
           )
-          appResult <- EitherT(managerServices.applicationManagementService.createApplication(
-            appRequest.name,
-            appRequest.namespace,
-            appRequest.executionGraph,
-            appRequest.kafkaStreaming
-          ))
+          appResult <- EitherT(managerServices.applicationManagementService.createApplication(appRequest))
         } yield {
           println(appResult)
           val expectedGraph = ApplicationExecutionGraph(
-            List(
+            links = Seq.empty,
+            stages = List(
               ApplicationStage(
+                key = "some_uuid",
                 List(
                   DetailedServiceDescription(
                     weight = 100,
@@ -94,8 +93,10 @@ class ApplicationServiceITSpec extends FullIntegrationSpec with BeforeAndAfterAl
             name = "MultiServiceStage",
             namespace = None,
             executionGraph = ExecutionGraphRequest(
+              links = ???,
               stages = List(
                 ExecutionStageRequest(
+                  key = None,
                   services = List(
                     ServiceCreationDescription(
                       runtimeId = runtime.id,
@@ -117,17 +118,14 @@ class ApplicationServiceITSpec extends FullIntegrationSpec with BeforeAndAfterAl
             ),
             kafkaStreaming = List.empty
           )
-          app <- EitherT(managerServices.applicationManagementService.createApplication(
-            appRequest.name,
-            appRequest.namespace,
-            appRequest.executionGraph,
-            appRequest.kafkaStreaming
-          ))
+          app <- EitherT(managerServices.applicationManagementService.createApplication(appRequest))
         } yield {
           println(app)
           val expectedGraph = ApplicationExecutionGraph(
-            List(
+            links = ???,
+            stages = List(
               ApplicationStage(
+                key = ???,
                 List(
                   DetailedServiceDescription(
                     weight = 50,
@@ -164,8 +162,10 @@ class ApplicationServiceITSpec extends FullIntegrationSpec with BeforeAndAfterAl
             name = "kafka_app",
             namespace = None,
             executionGraph = ExecutionGraphRequest(
+              links = ???,
               stages = List(
                 ExecutionStageRequest(
+                  key = None,
                   services = List(
                     ServiceCreationDescription(
                       runtimeId = 1, // dummy runtime id
@@ -187,20 +187,16 @@ class ApplicationServiceITSpec extends FullIntegrationSpec with BeforeAndAfterAl
               )
             )
           )
-          app <- EitherT(managerServices.applicationManagementService.createApplication(
-            appRequest.name,
-            appRequest.namespace,
-            appRequest.executionGraph,
-            appRequest.kafkaStreaming
-          ))
+          app <- EitherT(managerServices.applicationManagementService.createApplication(appRequest))
           appNew <- EitherT(managerServices.applicationManagementService.updateApplication(
-            app.id,
-            app.name,
-            app.namespace,
-            appRequest.executionGraph,
-            Seq.empty
+            UpdateApplicationRequest(
+              id = app.id,
+              name = app.name,
+              namespace = app.namespace,
+              executionGraph = appRequest.executionGraph,
+              kafkaStreaming = None
+            )
           ))
-
           gotNewApp <- EitherT(managerServices.applicationManagementService.getApplication(appNew.id))
         } yield {
           assert(appNew === gotNewApp)

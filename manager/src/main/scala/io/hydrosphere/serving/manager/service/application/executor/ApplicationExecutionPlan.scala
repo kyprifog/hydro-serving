@@ -1,13 +1,11 @@
 package io.hydrosphere.serving.manager.service.application.executor
 
-import java.util.UUID
-
 import io.hydrosphere.serving.manager.model.db.{ApplicationExecutionGraph, DetailedServiceDescription}
 
 sealed trait ApplicationExecutionPlan extends Product with Serializable
 
 case class SimplePlan(
-  key: UUID,
+  key: String,
   service: DetailedServiceDescription
 ) extends ApplicationExecutionPlan
 

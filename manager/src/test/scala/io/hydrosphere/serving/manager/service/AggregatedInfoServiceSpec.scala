@@ -110,7 +110,7 @@ class AggregatedInfoServiceSpec extends GenericUnitTest {
       it("fails when model has at least one version in application") {
         val model = Model(1, "model", ModelType.Tensorflow("1.1.0"), None, ModelContract.defaultInstance, LocalDateTime.now(), LocalDateTime.now())
         val version = ModelVersion(1, "image", "tag", "sha256", LocalDateTime.now(), "model", 1, ModelType.Tensorflow("1.1.0"), Some(model), ModelContract.defaultInstance)
-        val app = Application(1, "app", None, ModelContract.defaultInstance, ApplicationExecutionGraph(List.empty), List.empty)
+        val app = Application(1, "app", None, ModelContract.defaultInstance, ApplicationExecutionGraph(Seq.empty, Seq.empty), List.empty)
 
         val modelMock = mock[ModelManagementService]
         when(modelMock.getModel(1)).thenReturn(Result.okF(model))

@@ -6,11 +6,15 @@ import io.hydrosphere.serving.contract.model_signature.ModelSignature
 import io.hydrosphere.serving.manager.model.DataProfileFields
 
 case class ApplicationStage(
-  key: UUID,
-  services: List[DetailedServiceDescription],
+  key: String,
+  services: Seq[DetailedServiceDescription],
   signature: Option[ModelSignature],
   dataProfileFields: DataProfileFields
 )
+
+object ApplicationStage {
+  def randomKey = UUID.randomUUID().toString
+}
 
 case class DetailedServiceDescription(
   runtime: Runtime,
