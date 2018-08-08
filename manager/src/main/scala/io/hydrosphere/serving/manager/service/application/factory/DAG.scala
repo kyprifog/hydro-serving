@@ -42,6 +42,13 @@ case class DAG[T](nodes: Seq[T], links: Seq[(T, T)]) {
     edges.isEmpty
   }
 
+
+  /**
+    * Checks if there is only one connected component
+    * https://en.wikipedia.org/wiki/Connected_component_(graph_theory)
+    *
+    * @return
+    */
   def isSingleComponent(): Boolean = {
     val visitedNodes = mutable.ListBuffer.empty[T]
 
@@ -58,8 +65,4 @@ case class DAG[T](nodes: Seq[T], links: Seq[(T, T)]) {
     val notVisited = nodes.toSet -- visitedNodes.toSet
     notVisited.isEmpty
   }
-}
-
-object DAG {
-  case class Link[T](source: T, destination: T)
 }
