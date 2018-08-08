@@ -1,6 +1,7 @@
 package io.hydrosphere.serving.manager.service
 
 import java.time.LocalDateTime
+import java.util.UUID
 
 import io.hydrosphere.serving.contract.model_contract.ModelContract
 import io.hydrosphere.serving.manager.GenericUnitTest
@@ -37,66 +38,70 @@ class ApplicationServiceSpec extends GenericUnitTest {
       val mVersion2 = ModelVersion(2, "image", "tag", "sha256", createdTime, builtModel2.name, 1, ModelType.Tensorflow("1.1.0"), Some(builtModel2), builtModel2.modelContract)
       val mBuild2 = ModelBuild(2, builtModel2, 1, createdTime, Some(LocalDateTime.now()), ServiceTaskStatus.Finished, None, None, Some(mVersion2), "")
 
+
+      val graph1stage1 = ApplicationStage(
+        key = UUID.randomUUID().toString,
+        services = List(DetailedServiceDescription(
+          weight = 100,
+          signature = None,
+          runtime = runtime,
+          modelVersion = mVersion1,
+          environment = AnyEnvironment
+        )),
+        signature = None,
+        dataProfileFields = Map.empty
+      )
+      val graph1stage2 = ApplicationStage(
+        key = UUID.randomUUID().toString,
+        services = List(DetailedServiceDescription(
+          weight = 100,
+          signature = None,
+          runtime = runtime,
+          modelVersion = mVersion2,
+          environment = AnyEnvironment
+        )),
+        signature = None,
+        dataProfileFields = Map.empty
+      )
       val graph1 = ApplicationExecutionGraph(
-        links = ???,
-        stages = List(
-          ApplicationStage(
-            key = ???,
-            services = List(DetailedServiceDescription(
-              weight = 100,
-              signature = None,
-              runtime = runtime,
-              modelVersion = mVersion1,
-              environment = AnyEnvironment
-            )),
-            signature = None,
-            dataProfileFields = Map.empty
-          ),
-          ApplicationStage(
-            key = ???,
-            services = List(DetailedServiceDescription(
-              weight = 100,
-              signature = None,
-              runtime = runtime,
-              modelVersion = mVersion2,
-              environment = AnyEnvironment
-            )),
-            signature = None,
-            dataProfileFields = Map.empty
-          )
-        )
+        links = List(StageLink(graph1stage1, graph1stage2)),
+        stages = List(graph1stage1, graph1stage2)
       )
       val app1 = Application(1, "testapp1", None, ModelContract.defaultInstance, graph1, List.empty)
-      val graph2 = ApplicationExecutionGraph(
-        links = ???,
-        stages = List(ApplicationStage(
-          key = ???,
-          services = List(
-            DetailedServiceDescription(
-              weight = 100,
-              signature = None,
-              runtime = runtime,
-              modelVersion = mVersion1,
-              environment = AnyEnvironment
-            ),
-            DetailedServiceDescription(
-              weight = 100,
-              signature = None,
-              runtime = runtime,
-              modelVersion = mVersion2,
-              environment = AnyEnvironment
-            )
+
+      val graph2stage1 = ApplicationStage(
+        key = UUID.randomUUID().toString,
+        services = List(
+          DetailedServiceDescription(
+            weight = 100,
+            signature = None,
+            runtime = runtime,
+            modelVersion = mVersion1,
+            environment = AnyEnvironment
           ),
-          signature = None,
-          dataProfileFields = Map.empty
-        ))
+          DetailedServiceDescription(
+            weight = 100,
+            signature = None,
+            runtime = runtime,
+            modelVersion = mVersion2,
+            environment = AnyEnvironment
+          )
+        ),
+        signature = None,
+        dataProfileFields = Map.empty
+      )
+      val graph2 = ApplicationExecutionGraph(
+        links = List.empty,
+        stages = List(graph2stage1)
       )
       val app2 = Application(2, "testapp2", None, ModelContract.defaultInstance, graph2, List.empty)
+
+      val graph3stage1 = ApplicationStage(
+        UUID.randomUUID().toString, List.empty, None, Map.empty
+      )
       val graph3 = ApplicationExecutionGraph(
-        links = ???,
-        stages = List(ApplicationStage(
-          "very-long-id", List.empty, None, Map.empty
-        ))
+        links = List.empty,
+        stages = List(graph3stage1)
       )
       val app3 = Application(3, "testapp3", None, ModelContract.defaultInstance, graph3, List.empty)
 
