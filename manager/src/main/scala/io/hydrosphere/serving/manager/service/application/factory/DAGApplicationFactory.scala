@@ -9,40 +9,131 @@ import io.hydrosphere.serving.manager.model.db._
 import io.hydrosphere.serving.manager.service.application._
 import io.hydrosphere.serving.manager.service.environment.AnyEnvironment
 import Result.Implicits._
+import io.hydrosphere.serving.contract.model_contract.ModelContract
 import io.hydrosphere.serving.contract.model_signature.ModelSignature
+import io.hydrosphere.serving.manager.model.Result.ClientError
 import io.hydrosphere.serving.manager.model.api.ops.ModelSignatureOps
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class DAGApplicationFactory(val factoryParams: FactoryParams)(implicit executionContext: ExecutionContext) extends ApplicationFactory {
+
   override def create(req: CreateApplicationRequest): HFResult[Application] = {
-    ???
-  }
-
-  private def inferGraph(executionGraphRequest: ExecutionGraphRequest): HFResult[ApplicationExecutionGraph] = {
-    val appStages = inferPipelineApp(executionGraphRequest.stages)
-    EitherT(appStages).map { stages =>
-      ApplicationExecutionGraph(
-        stages.toList,
-        ???
-      )
-    }.value
-  }
-
-  private def inferDagApp(stages: Seq[ExecutionStageRequest], links: Seq[ExecutionLinkRequest]) = {
-    for {
-      stagesInfo <- EitherT(getFullServiceInfo(stages))
+    val f = for {
+      dag <- EitherT(inferDagApp(req.executionGraph.stages, req.executionGraph.links))
+      dagContract <- EitherT(Future.successful(inferDagContract(req.name, dag)))
     } yield {
-      val sources = links.map(_.from)
-      val sinks = links.map(_.to)
+      Application(-1, req.name, req.namespace, dagContract, dag, req.kafkaStreaming)
+    }
+    f.value
+  }
 
-      val roots = sources.filterNot(sinks.contains)
-      val terminals = sinks.filterNot(sources.contains)
-
+  def ensureSingatures(stages: Seq[ApplicationStage]): HResult[Seq[ModelSignature]] = {
+    Result.traverse(stages) { stage =>
+      stage.signature.toHResult(ClientError(s"Signature is not defined for stage ${stage.key}"))
     }
   }
 
-  private def getFullServiceInfo(stages: Seq[ExecutionStageRequest]) = {
+  private def inferDagContract(appName: String, dag: ApplicationExecutionGraph): HResult[ModelContract] = {
+    val sources = dag.links.map(_.from)
+    val sinks = dag.links.map(_.to)
+
+    val roots = sources.filterNot(sinks.contains)
+    val terminals = sinks.filterNot(sources.contains)
+
+    for {
+      inputSigs <- ensureSingatures(roots).right
+      outputSigs <- ensureSingatures(terminals).right
+    } yield {
+      val inputs = inputSigs.fold(ModelSignature.defaultInstance) {
+        case (sig1, sig2) => ModelSignatureOps.merge(sig1, sig2)
+      }.inputs
+
+      val outputs = outputSigs.fold(ModelSignature.defaultInstance) {
+        case (sig1, sig2) => ModelSignatureOps.merge(sig1, sig2)
+      }.outputs
+
+      val signature = ModelSignature(
+        signatureName = appName,
+        inputs = inputs,
+        outputs = outputs
+      )
+
+      ModelContract(
+        modelName = appName,
+        signatures = Seq(signature)
+      )
+    }
+  }
+
+  private def checkDAGNodeContracts(stagesInfo: Seq[ApplicationStage], linkIds: Seq[(UUID, UUID)]): HResult[ApplicationExecutionGraph] = {
+    var errorNode = Option.empty[String]
+
+    def _visit_and_check_contracts(nodeId: String): Unit = {
+      val currentSignature = stagesInfo.find(_.key == nodeId).map(_.signature.get).get //FIXME naive
+
+      val parents = linkIds.filter(_._2 == nodeId).map(_._1)
+
+      if (parents.nonEmpty) {
+        val parentSignatures = parents.flatMap(id => stagesInfo.find(_.key == id)).flatMap(_.signature) //FIXME naive
+        val parentMetaSignature = parentSignatures.fold(ModelSignature.defaultInstance) {
+          case (a, b) => ModelSignatureOps.merge(a, b)
+        }
+        val isCompatible = ModelSignatureOps.append(parentMetaSignature, currentSignature).isDefined
+        if (isCompatible) {
+          // propagate deeper into graph
+          val children = linkIds.filter(_._1 == nodeId).map(_._2.toString)
+          children.foreach(_visit_and_check_contracts)
+        } else {
+          errorNode = Some(nodeId)
+        }
+      }
+    }
+
+    val sources = linkIds.map(_._1)
+    val sinks = linkIds.map(_._2)
+
+    val roots = sources.filterNot(sinks.contains)
+    val terminals = sinks.filterNot(sources.contains)
+
+    roots.foreach { node =>
+      _visit_and_check_contracts(node.toString)
+    }
+
+    errorNode match {
+      case Some(errorNodeId) =>
+        Result.clientError(s"Incompatible signature for node id=$errorNodeId")
+      case None =>
+        val fullLinks = linkIds.map { case (from, to) =>
+          val source = stagesInfo.find(_.key == from.toString).get
+          val destination = stagesInfo.find(_.key == to.toString).get
+          StageLink(source, destination)
+        }
+
+        Result.ok(
+          ApplicationExecutionGraph(
+            stagesInfo,
+            fullLinks
+          )
+        )
+    }
+  }
+
+  private def inferDagApp(stages: Seq[ExecutionStageRequest], links: Seq[ExecutionLinkRequest]): HFResult[ApplicationExecutionGraph] = {
+    val linkIds = links.map(x => x.from -> x.to)
+    val stageIds = stages.map(_.key.getOrElse(UUID.randomUUID()))
+    val dag = DAG(stageIds, linkIds)
+    val f = for {
+      _ <- EitherT(Future.successful(checkDAG(dag)))
+      stagesInfo <- EitherT(getFullStageInfo(stages))
+      result <- EitherT(Future.successful(checkDAGNodeContracts(stagesInfo, linkIds)))
+    } yield {
+      result
+    }
+    f.value
+  }
+
+  private def getFullStageInfo(stages: Seq[ExecutionStageRequest]) = {
     Result.traverseF(stages) { stageRequest =>
       val key = stageRequest.key.map(_.toString).getOrElse(ApplicationStage.randomKey)
       val f = for {
@@ -50,7 +141,7 @@ class DAGApplicationFactory(val factoryParams: FactoryParams)(implicit execution
         dataProfileFields = mergeServiceDataProfilingTypes(services)
         signature <- EitherT(Future.successful(inferStageSignature(services)))
       } yield {
-        key -> ApplicationStage.apply(key, services, Some(signature.withSignatureName(key)), dataProfileFields)
+        ApplicationStage.apply(key, services, Some(signature.withSignatureName(key)), dataProfileFields)
       }
       f.value
     }
@@ -72,35 +163,12 @@ class DAGApplicationFactory(val factoryParams: FactoryParams)(implicit execution
     }
   }
 
-  private def checkDAG(req: ExecutionGraphRequest): HResult[ExecutionGraphRequest] = {
-    val stageIds = req.stages.map(_.key.getOrElse(UUID.randomUUID()))
-    val dag = DAG(stageIds, req.links.map(x => x.from -> x.to))
-
+  private def checkDAG(dag: DAG[_]): HResult[Unit] = {
     for {
       _ <- checkCycles(dag).right
       _ <- checkComponents(dag).right
     } yield {
-      req
-    }
-  }
-
-  private def inferPipelineApp(stages: Seq[ExecutionStageRequest]): HFResult[Seq[ApplicationStage]] = {
-    Result.sequenceF {
-      stages.zipWithIndex.map {
-        case (stage, id) =>
-          val f = for {
-            services <- EitherT(inferServices(stage.services))
-            stageSigs <- EitherT(Future.successful(inferStageSignature(services)))
-          } yield {
-            ApplicationStage(
-              key = stage.key.map(_.toString).getOrElse(ApplicationStage.randomKey),
-              services = services.toList,
-              signature = Some(stageSigs.withSignatureName(id.toString)),
-              dataProfileFields = mergeServiceDataProfilingTypes(services)
-            )
-          }
-          f.value
-      }
+      Unit
     }
   }
 
