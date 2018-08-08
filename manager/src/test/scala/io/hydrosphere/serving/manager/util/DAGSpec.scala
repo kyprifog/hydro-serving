@@ -82,7 +82,49 @@ class DAGSpec extends GenericUnitTest {
           node1 -> node3
         )
         val graph = DAG(nodes, edges)
-        assert(!graph.isAcyclic())
+        assert(graph.isAcyclic())
+      }
+    }
+    describe("isSingleComponent()") {
+      val node1 = UUID.randomUUID()
+      val node2 = UUID.randomUUID()
+      val node3 = UUID.randomUUID()
+      val node4 = UUID.randomUUID()
+      val nodes = Seq(node1, node2, node3, node4)
+
+      it("should return true for simple graph") {
+        val edges = Seq(
+          node1 -> node2,
+          node2 -> node3,
+          node3 -> node4
+        )
+        val graph = DAG(nodes, edges)
+        assert(graph.isSingleComponent())
+      }
+      it("should return true for graph with multiple roots") {
+        val edges = Seq(
+          node1 -> node2,
+          node3 -> node2,
+          node3 -> node4
+        )
+        val graph = DAG(nodes, edges)
+        assert(graph.isSingleComponent())
+      }
+      it("should return false for multiple graphs") {
+        val edges = Seq(
+          node1 -> node2,
+          node3 -> node4
+        )
+        val graph = DAG(nodes, edges)
+        assert(!graph.isSingleComponent())
+      }
+      it("should return false for graph and isolated point") {
+        val edges = Seq(
+          node1 -> node2,
+          node2 -> node3
+        )
+        val graph = DAG(nodes, edges)
+        assert(!graph.isSingleComponent())
       }
     }
   }

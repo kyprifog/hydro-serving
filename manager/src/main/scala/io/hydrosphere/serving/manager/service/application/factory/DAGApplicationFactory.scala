@@ -1,5 +1,7 @@
 package io.hydrosphere.serving.manager.service.application.factory
 
+import java.util.UUID
+
 import cats.data.EitherT
 import cats.implicits._
 import io.hydrosphere.serving.manager.model.{DataProfileFields, HFResult, HResult, Result}
@@ -36,6 +38,7 @@ class DAGApplicationFactory(val factoryParams: FactoryParams)(implicit execution
 
       val roots = sources.filterNot(sinks.contains)
       val terminals = sinks.filterNot(sources.contains)
+
     }
   }
 
@@ -53,16 +56,31 @@ class DAGApplicationFactory(val factoryParams: FactoryParams)(implicit execution
     }
   }
 
-  def checkCycles(req: ExecutionGraphRequest): HResult[ExecutionGraphRequest] = ???
+  private def checkCycles(dag: DAG[_]): HResult[Unit] = {
+    if (dag.isAcyclic()) {
+      Result.ok(Unit)
+    } else {
+      Result.clientError("Graph must be acyclic, but cycles are detected.")
+    }
+  }
 
-  def checkComponents(req: ExecutionGraphRequest): HResult[ExecutionGraphRequest] = ???
+  private def checkComponents(dag: DAG[_]): HResult[Unit] = {
+    if (dag.isSingleComponent()) {
+      Result.ok(Unit)
+    } else {
+      Result.clientError("Graph must contain single component, but multiple components detected.")
+    }
+  }
 
   private def checkDAG(req: ExecutionGraphRequest): HResult[ExecutionGraphRequest] = {
+    val stageIds = req.stages.map(_.key.getOrElse(UUID.randomUUID()))
+    val dag = DAG(stageIds, req.links.map(x => x.from -> x.to))
+
     for {
-      acycled <- checkCycles(req).right
-      singleComponent <- checkComponents(acycled).right
+      _ <- checkCycles(dag).right
+      _ <- checkComponents(dag).right
     } yield {
-      singleComponent
+      req
     }
   }
 

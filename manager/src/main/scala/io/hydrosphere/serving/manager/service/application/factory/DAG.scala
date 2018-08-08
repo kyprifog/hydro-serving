@@ -1,5 +1,6 @@
 package io.hydrosphere.serving.manager.service.application.factory
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 case class DAG[T](nodes: Seq[T], links: Seq[(T, T)]) {
@@ -39,6 +40,23 @@ case class DAG[T](nodes: Seq[T], links: Seq[(T, T)]) {
       }
     }
     edges.isEmpty
+  }
+
+  def isSingleComponent(): Boolean = {
+    val visitedNodes = mutable.ListBuffer.empty[T]
+
+    def _visit_downstream(currentNode: T): Unit = {
+      visitedNodes += currentNode
+      val nextSourceNodes = links.filter(_._1 == currentNode).map(_._2)
+      val nextDestNodes = links.filter(_._2 == currentNode).map(_._1)
+      val nextNodes = nextSourceNodes ++ nextDestNodes
+      nextNodes.filterNot(visitedNodes.contains).foreach(_visit_downstream)
+    }
+
+    roots.headOption.foreach(_visit_downstream)
+
+    val notVisited = nodes.toSet -- visitedNodes.toSet
+    notVisited.isEmpty
   }
 }
 
