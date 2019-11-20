@@ -1,24 +1,28 @@
-# `hs` CLI tool
+# CLI
 
-`hs` is a ClI interface to serving cluster, that aggregates API to various services.
+`hs` is a command line interface to Hydrosphere platform, that
+aggregates API to various services.
+
+Source code: https://github.com/Hydrospheredata/hydro-serving-cli  
+PyPI: https://pypi.org/project/hs/
 
 ## Installation
 
-`pip install hs`
-
-@@@ note
-The package is only for python3
-@@@
+```sh
+pip install hs
+```
 
 ## Commands
 
 @@@ note
-You can add `--help` parameter for any command for additonal info.
+You can add `--help` parameter for any command for additional information.
 @@@
 
 ### `hs cluster`
 
-Cluster is a space, where you deploy your models. Simply put, it points where to apply your configurations and where to upload your models. It stores all the clusters in `~/.hs-home/config.yaml` file.
+Cluster is a space where you deploy your models. Simply put, it points 
+where to apply your configurations and where to upload your models. It 
+stores all the clusters in `~/.hs-home/config.yaml` file.
 
 ```yaml
 # Example configuration
@@ -31,7 +35,7 @@ clusters:
 current-cluster: local
 ```
 
-To look up, which cluster you're using, execute:
+To look up which cluster you're using, execute:
 
 ```sh
 hs cluster
@@ -57,21 +61,51 @@ hs cluster rm new_local
 
 ### `hs upload`
 
-When you upload a model, the tool looks for `serving.yaml` file in the current directory. `serving.yaml` defines model's metadata and it's contract. For more information, check out [model's manifest]({{site.baseurl}}{%link how-to/write-manifests.md%}#kind-model).
+When you upload a model, the tool looks for `serving.yaml` file in the 
+current directory. `serving.yaml` defines model's metadata and it's 
+contract. For more information, check out 
+[model's resource definitions](../reference/manifests.html#kind-model).
 
 ### `hs apply` 
 
-You can apply custom resources on Serving. These resources are detected by `kind` key in the [manifest]({{site.baseurl}}{%link how-to/write-manifests.md%}) files.
+This command has similar functionality as `hs upload` but allows you not 
+only to deploy models, but also create applications, define pipeline and 
+stages inside an application. Types of resource to apply are detected by 
+`kind` key in the  [manifest](../reference/manifests.html) files.
 
-- Model defines the model files, and it's contract;
+- Model defines model files and the contract;
 - Application defines an endpoint to reach your models. 
 
-### `hs profile push`
+Example of application configuration:
 
-### `hs app list`
+```yaml
+kind: Application
+name: sample-claims-app
+pipeline:
+  - model: claims-preprocessing:1
+  -  modelservices:
+      - model: claims-model:1
+        weight: 80
+      - model: claims-model-old:2
+        weight: 20
+```
 
-### `hs app rm`
+### `hs profile`
 
-### `hs model list`
+* `push` - uploads training dataset to compute its profiles  
+* `status` - shows profiling status for given model  
 
-### `hs model rm`
+### `hs app `
+
+This command provides information about available apps
+
+* `list` - lists all existing apps
+* `rm` - removes certain app
+
+
+### `hs model`
+
+This command provides information about available models
+
+* `list` - lists all existing models
+* `rm` - removes certain model

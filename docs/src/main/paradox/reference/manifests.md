@@ -1,10 +1,9 @@
 # Model contract
 
-In this page we've defined all possible values for certain type of fields of different manifests. 
+In this page we've defined all possible values for certain type of fields 
+of different manifests. 
 
-<br> 
-
-### `kind: Model` 
+## Model
 
 ```yaml
 kind: Model
@@ -16,6 +15,8 @@ contract:
         shape: scalar
         type: int32
         profile: numeric
+metadata:
+  experiment: "demo" 
 ...
 ``` 
 
@@ -52,7 +53,7 @@ contract:
             </tr>
             <tr>
                 <td><code>string</code></td>
-                <td>String.</td>
+                <td>String in bytes.</td>
             </tr>
             <tr>
                 <td><code>half</code>, <code>float16</code></td>

@@ -21,9 +21,8 @@ global:
 env: {}
 
 image:
-  repository: hydrosphere/serving-manager
-  tag: 2.0.1
-  pullPolicy: Always
+  full:  hydrosphere/serving-manager:2.1.0
+  pullPolicy:  IfNotPresent
 
 service:
   type: ClusterIP
