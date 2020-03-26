@@ -1,22 +1,12 @@
 # How-To 
 
 @@@ index
-* [Write resource definitions](write-resource-definitions.md);
+* [Write definitions](write-definitions.md);
 * [Invoke applications](invoke-applications.md);
+* [Monitoring external models](monitoring-external-models.md);
 * [Develop runtimes](develop-runtimes.md);
-* [Custom monitoring](add-custom-monitoring-metric.md);
 @@@
 
-In this section we've described a few recipes that will help you to work 
-with Hydrosphere Serving more freely and efficiently.
+On this page you will find more elaborate articles addressing specific use cases of your work with the Hydrosphere platform. 
 
-* @ref[Write resource definitions](write-resource-definitions.md) page will 
-explore you different manifests, that you can apply with CLI.
-* @ref[Invoke applications](invoke-applications.md) page will help you to 
-reach your models from outside.
-* @ref[Develop custom runtimes](develop-runtimes.md) page will guide through 
-the way of building your own runtime. 
-* @ref[Add custom monitoring metrics](add-custom-monitoring-metric.md) page 
-will guide through the way on how to add a custom monitoring metric. 
-
-
+@@toc { depth=1 }
