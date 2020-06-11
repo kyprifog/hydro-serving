@@ -4,12 +4,11 @@
 
 global:
   shadowing_on: false
-  reqstore_enabled: false
 
 replicaCount: 1
 
 image:
-  full:  hydrosphere/serving-gateway:2.2.0
+  full:  hydrosphere/serving-gateway:2.3.0
   pullPolicy:  IfNotPresent
 
 service:
